@@ -1,0 +1,81 @@
+FieldID,FieldName,Category,Purpose,DataType,Mandatory,AllowedValues,ValidationRule,DependentFields,SampleEntry,UsedFor_Coverage,UsedFor_Classification,UsedFor_PayCalc,UsedFor_Audit,UsedFor_Escalation
+EMP001,Employee ID,Employee Details,Unique identifier for the employee,Text,Mandatory,Free text,Must not be blank,,E00247,N,N,Y,Y,N
+EMP002,Employee Full Name,Employee Details,Employee identification,Text,Mandatory,Free text,Must not be blank,,Jane Smith,N,N,Y,Y,N
+EMP003,Employment Start Date,Employee Details,Tenure and entitlement calculations,Date,Mandatory,DD/MM/YYYY,Valid date not in future,,15/03/2022,N,N,Y,Y,N
+EMP004,Date of Birth,Employee Details,Junior rates calculation,Date,Optional,DD/MM/YYYY,Valid date,,12/06/1998,N,N,Y,Y,N
+EMP005,Age at Calculation Date,Employee Details,Junior rate trigger,Numeric integer,Calculated,15-70,Auto-calculated from EMP004,EMP004,26,N,N,Y,Y,N
+EMP006,State/Territory of Employment,Employee Details,Public holiday lookup and geographic conditions,List,Mandatory,"NSW,VIC,QLD,SA,WA,TAS,NT,ACT",Select list only,,NSW,N,N,Y,Y,N
+EMP007,Employment Location,Employee Details,Geographic allowances,Text,Optional,Free text,,,Parramatta 2150,N,N,N,Y,N
+ORG001,Employer Name,Employer Profile,Employer identification,Text,Mandatory,Free text,Must not be blank,,ABC Transport Pty Ltd,N,N,N,Y,N
+ORG002,ABN,Employer Profile,Employer identification,Numeric,Optional,11-digit ABN,Validate ABN format,,51123456789,N,N,N,Y,N
+ORG003,Primary Industry,Employer Profile,Award coverage determination,List,Mandatory,"Transport-Logistics,Clerical-Other,Mixed,Other",Select list only,,Transport-Logistics,Y,N,N,Y,Y
+ORG004,Industry Description,Employer Profile,Coverage detail for audit,Text,Optional,Free text,,,Road freight and distribution,Y,N,N,Y,N
+ORG005,Sector,Employer Profile,Award coverage — private sector test,List,Mandatory,"Private,Government,Not-for-profit",Select list only,,Private,Y,N,N,Y,Y
+ORG006,EA Applicable,Employer Profile,Enterprise agreement flag,List,Mandatory,"Yes,No,Unknown",Select list only,,No,Y,N,N,Y,Y
+ORG007,EA Reference,Employer Profile,EA identification,Text,Optional,Free text,Required if ORG006=Yes,,, N,N,N,Y,N
+ORG008,State Registered Employer,Employer Profile,Federal vs state system coverage,Boolean,Mandatory,"Yes,No",Select list only,,No,Y,N,N,Y,Y
+COV001,Award Coverage Confirmed,Coverage Indicators,Award determination output,List,Mandatory,"Yes-MA000002,Yes-MA000038,Yes-MA000039,Unresolved",Set by coverage engine,ORG003+EMP duties,Yes-MA000038,Y,N,N,Y,Y
+COV002,Coverage Basis,Coverage Indicators,Documentation of coverage decision,Text,Mandatory,Auto-populated,,COV001,RTD industry + driver duties,Y,N,N,Y,N
+COV003,Manual Coverage Override,Coverage Indicators,Flag for manual override,Boolean,Mandatory,"Yes,No",If Yes require COV004,,No,Y,N,N,Y,Y
+COV004,Manual Coverage Justification,Coverage Indicators,Override explanation,Text,Optional,Free text,Required if COV003=Yes,COV003,,,N,N,N,Y,Y
+COV005,Coverage Reviewed By,Coverage Indicators,Reviewer identification,Text,Optional,Free text,,,HR Manager,Y,N,N,Y,N
+COV006,Coverage Review Date,Coverage Indicators,Date of coverage assessment,Date,Optional,DD/MM/YYYY,Valid date,,01/02/2026,Y,N,N,Y,N
+ETP001,Employment Type,Employment Type,Base entitlement determination,List,Mandatory,"Full-time,Part-time,Casual",Select list only,,Full-time,N,N,Y,Y,N
+ETP002,Contracted Hours Per Week,Employment Type,Ordinary hours base,Numeric decimal,Mandatory for FT/PT,0-76,Must not exceed 76,,38,N,N,Y,Y,N
+ETP003,Contracted Days Per Week,Employment Type,Daily ordinary hours calculation,Numeric integer,Optional,1-6,,,5,N,N,Y,Y,N
+ETP004,Guaranteed Hours Per Week (PT),Employment Type,Part-time ordinary hours,Numeric decimal,Mandatory if PT,0-38,Must not exceed ETP002,ETP001,20,N,N,Y,Y,N
+ETP005,Hours Variation Agreed (PT),Employment Type,Part-time flexibility,Boolean,Optional,"Yes,No",,ETP001,No,N,N,Y,Y,N
+ETP006,Regular Roster Pattern,Employment Type,Roster consistency flag,Boolean,Mandatory,"Yes,No",,,,N,N,Y,Y,N
+ETP007,Shift Worker,Employment Type,Shift loading trigger,Boolean,Mandatory,"Yes,No",,,,N,N,Y,Y,N
+CLA001,Job Title,Classification,Role identification,Text,Mandatory,Free text,Must not be blank,,Delivery Driver,N,Y,N,Y,N
+CLA002,Award,Classification,Award for classification lookup,List,Mandatory,"MA000002,MA000038,MA000039",Auto from COV001,COV001,MA000038,N,Y,N,Y,N
+CLA003,Classification Level,Classification,Pay rate selection,List,Mandatory,Award-specific,Validated against CLA002,,RTD Grade 3,N,Y,Y,Y,Y
+CLA004,Classification Assessment Completed,Classification,Assessment confirmation,Boolean,Mandatory,"Yes,No",,,,N,Y,N,Y,Y
+CLA005,Classification Evidence Reference,Classification,Document reference,Text,Optional,Free text,,,PD-247-v2,N,Y,N,Y,N
+CLA006,Vehicle GVM Class,Classification,Driver classification and vehicle allowance,List,Mandatory if driver,"Up to 4.5t,4.5t-8t,8t-15t,15t-25t,Over 25t,N/A",,CLA003,15t-25t,N,Y,Y,Y,N
+CLA007,Dangerous Goods Licensed,Classification,DG allowance trigger,Boolean,Optional,"Yes,No",,,,N,Y,Y,Y,N
+CLA008,First Aid Qualified,Classification,First aid allowance trigger,Boolean,Optional,"Yes,No",,,,N,Y,Y,Y,N
+CLA009,Leading Hand or Supervisor,Classification,Leading hand classification,Boolean,Optional,"Yes,No",,,,N,Y,Y,Y,N
+CLA010,Number of Employees Supervised,Classification,Leading hand level,Numeric integer,Optional,0-999,Required if CLA009=Yes,CLA009,0,N,Y,Y,Y,N
+RST001,Roster Start Date,Roster Pattern,Period identification,Date,Mandatory,DD/MM/YYYY,Valid date,,17/03/2026,N,N,Y,Y,N
+RST002,Roster End Date,Roster Pattern,Period identification,Date,Mandatory,DD/MM/YYYY,Valid date after RST001,RST001,23/03/2026,N,N,Y,Y,N
+RST003,Roster Days Worked,Roster Pattern,Working days,Multi-select,Mandatory,"Mon,Tue,Wed,Thu,Fri,Sat,Sun",At least one,,Mon/Tue/Wed/Thu/Fri,N,N,Y,Y,N
+RST004,Regular Start Time,Roster Pattern,Span of hours check,Time,Mandatory,HH:MM 24hr,Valid time,,07:00,N,N,Y,Y,N
+RST005,Regular Finish Time,Roster Pattern,Span of hours check,Time,Mandatory,HH:MM 24hr,Valid time after RST004,RST004,15:30,N,N,Y,Y,N
+RST006,Averaging Arrangement,Roster Pattern,Overtime calculation basis,Boolean,Optional,"Yes,No",,,,N,N,Y,Y,Y
+RST007,Averaging Period Weeks,Roster Pattern,Overtime averaging period,Numeric integer,Optional,1-52,Required if RST006=Yes,RST006,,,N,N,Y,Y,Y
+SHF001,Shift Day,Shift Data,Day classification for penalty rates,Text,Mandatory,"Mon,Tue,Wed,Thu,Fri,Sat,Sun,PH",Calculated from SHF002,SHF002,Monday,N,N,Y,Y,N
+SHF002,Shift Date,Shift Data,Specific date for PH check and audit,Date,Mandatory,DD/MM/YYYY,Valid date,,17/03/2026,N,N,Y,Y,N
+SHF003,Shift Start Time,Shift Data,Penalty calculation start,Time,Mandatory,HH:MM 24hr,Valid time,,06:00,N,N,Y,Y,N
+SHF004,Shift End Time,Shift Data,Penalty calculation end,Time,Mandatory,HH:MM 24hr,Valid time after SHF003,SHF003,14:00,N,N,Y,Y,N
+SHF005,Unpaid Break Duration Minutes,Shift Data,Net hours calculation,Numeric integer,Mandatory,0-120,Non-negative,,30,N,N,Y,Y,N
+SHF006,Paid Rest Break Duration Minutes,Shift Data,Break compliance check,Numeric integer,Mandatory,0-60,Non-negative,,10,N,N,Y,Y,N
+SHF007,Total Hours Worked Gross,Shift Data,Calculation base,Numeric decimal,Calculated,,Auto-calculated from SHF003 and SHF004,,8.00,N,N,Y,Y,N
+SHF008,Total Hours Worked Net,Shift Data,Actual payable hours,Numeric decimal,Calculated,,SHF007 minus SHF005/60,,7.50,N,N,Y,Y,N
+SHF009,Shift Type,Shift Data,Shift loading determination,List,Mandatory,"Day,Afternoon,Night,Rotating",Select list only,,Day,N,N,Y,Y,N
+SHF010,Public Holiday,Shift Data,PH rate trigger,Boolean,Calculated,"Yes,No",Cross-check PH_Table,EMP006+SHF002,No,N,N,Y,Y,N
+LU001,Loading Unloading Performed,Loading/Unloading,Classification and allowance check,Boolean,Mandatory if RTD,"Yes,No",,,,N,Y,Y,Y,N
+LU002,Loading Time Hours,Loading/Unloading,Time tracking,Numeric decimal,Optional,0-12,Non-negative,,1.5,N,N,Y,Y,N
+LU003,Unloading Time Hours,Loading/Unloading,Time tracking,Numeric decimal,Optional,0-12,Non-negative,,1.0,N,N,Y,Y,N
+LU004,Loading Type,Loading/Unloading,Equipment and conditions,List,Optional,"Manual,Forklift,Assisted,Tail-lift",,,,N,Y,N,Y,N
+LU005,Dangerous Goods Loaded,Loading/Unloading,DG allowance trigger support,Boolean,Optional,"Yes,No",,,,N,N,Y,Y,N
+LDT001,RTLDO Trip,Long Distance,Long distance coverage trigger,Boolean,Mandatory if RTLDO,"Yes,No",,,,Y,N,Y,Y,N
+LDT002,Per-Km Rate Category,Long Distance,Rate selection,List,Mandatory if LDT001=Yes,From RTLDO rates table,Validate against classification,,Class 2,N,Y,Y,Y,N
+LDT003,Total Km This Trip,Long Distance,Per-km earnings calculation,Numeric integer,Mandatory if LDT001=Yes,0-9999,Non-negative,,872,N,N,Y,Y,N
+LDT004,Waiting Time at Destination Hours,Long Distance,Waiting time payment,Numeric decimal,Optional,0-48,Non-negative,,3.0,N,N,Y,Y,N
+LDT005,Meal Allowance Triggered,Long Distance,Meal allowance payment,Boolean,Calculated,"Yes,No",Auto-based on hours away,LDT003+LDT007,Yes,N,N,Y,Y,N
+LDT006,Accommodation Allowance Triggered,Long Distance,Accommodation payment,Boolean,Calculated,"Yes,No",Auto-based on overnight,LDT007,Yes,N,N,Y,Y,N
+LDT007,Nights Away from Base,Long Distance,Accommodation and meal allowances,Numeric integer,Optional,0-30,Non-negative,,1,N,N,Y,Y,N
+ALW001,Meal Allowance Applicable,Allowances,Meal allowance trigger,Boolean,Calculated,"Yes,No",Auto-based on hours and breaks,,No,N,N,Y,Y,N
+ALW002,Vehicle Allowance Applicable,Allowances,Vehicle allowance trigger,Boolean,Mandatory if driver,"Yes,No",,CLA006,Yes,N,N,Y,Y,N
+ALW003,Dangerous Goods Allowance,Allowances,DG allowance trigger,Boolean,Optional,"Yes,No",Requires CLA007=Yes or LU005=Yes,,Yes,N,N,Y,Y,N
+ALW004,First Aid Allowance,Allowances,First aid allowance trigger,Boolean,Optional,"Yes,No",Requires CLA008=Yes,,No,N,N,Y,Y,N
+ALW005,Leading Hand Allowance,Allowances,Leading hand allowance trigger,Boolean,Optional,"Yes,No",Requires CLA009=Yes,,No,N,N,Y,Y,N
+EXC001,EA Possible,Exception Flags,EA escalation trigger,Boolean,Mandatory,"Yes,No,Unknown",,,,N,N,N,Y,Y
+EXC002,Long Service Consideration,Exception Flags,Tenure flag,Boolean,Optional,"Yes,No",,,,N,N,N,Y,Y
+EXC003,Junior Employee,Exception Flags,Junior rate trigger,Boolean,Calculated,"Yes,No",Auto from EMP005,EMP005,,N,N,Y,Y,N
+EXC004,Trainee or Apprentice,Exception Flags,Training wage flag,Boolean,Mandatory,"Yes,No",,,,N,N,N,Y,Y
+EXC005,Disputed Classification,Exception Flags,Classification escalation,Boolean,Mandatory,"Yes,No",,,,N,Y,N,Y,Y
+EXC006,Dispute or Complaint Active,Exception Flags,Dispute flag,Boolean,Mandatory,"Yes,No",,,,N,N,N,Y,Y
+EXC007,Prior Underpayment Risk,Exception Flags,Underpayment history flag,Boolean,Mandatory,"Yes,No",,,,N,N,N,Y,Y
+EXC008,Non-Standard Roster,Exception Flags,Roster complexity flag,Boolean,Mandatory,"Yes,No",,,,N,N,Y,Y,Y
