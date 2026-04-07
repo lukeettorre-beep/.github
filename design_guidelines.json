@@ -1,0 +1,111 @@
+{
+  "theme": "Light/Dark Toggle",
+  "archetype": "Archetype 4: Swiss & High-Contrast",
+  "colors": {
+    "light": {
+      "background": "#FFFFFF",
+      "surface": "#F4F4F5",
+      "surface_alt": "#E4E4E7",
+      "primary": "#000000",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#E4E4E7",
+      "secondary_foreground": "#18181B",
+      "border": "#D4D4D8",
+      "ring": "#000000",
+      "success": "#059669",
+      "warning": "#D97706",
+      "danger": "#DC2626",
+      "danger_foreground": "#FFFFFF",
+      "muted": "#A1A1AA",
+      "muted_foreground": "#52525B",
+      "info": "#2563EB"
+    },
+    "dark": {
+      "background": "#09090B",
+      "surface": "#18181B",
+      "surface_alt": "#27272A",
+      "primary": "#FFFFFF",
+      "primary_foreground": "#000000",
+      "secondary": "#27272A",
+      "secondary_foreground": "#FAFAFA",
+      "border": "#27272A",
+      "ring": "#FFFFFF",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "danger": "#EF4444",
+      "danger_foreground": "#FFFFFF",
+      "muted": "#3F3F46",
+      "muted_foreground": "#A1A1AA",
+      "info": "#3B82F6"
+    },
+    "strategy": "Archetype 4: High contrast monochrome with signal colors (red for compliance warnings, green for valid rates). Avoid soft pastels. Use strict hierarchy to guide the user's eye."
+  },
+  "typography": {
+    "primary_font": "Cabinet Grotesk",
+    "secondary_font": "IBM Plex Sans",
+    "mono_font": "JetBrains Mono",
+    "strategy": "Cabinet Grotesk for strict, authoritative headings. IBM Plex Sans for dense data and UI text. JetBrains Mono for numbers, pay rates, and audit trails to ensure horizontal alignment.",
+    "scale": {
+      "h1": "text-4xl md:text-5xl tracking-tight leading-none font-bold",
+      "h2": "text-2xl md:text-3xl tracking-tight leading-snug font-semibold",
+      "h3": "text-xl md:text-2xl tracking-tight leading-snug font-medium",
+      "body": "text-sm md:text-base leading-relaxed font-normal",
+      "small": "text-xs uppercase tracking-[0.2em] font-semibold",
+      "data": "font-mono text-sm tracking-tight"
+    }
+  },
+  "layout": {
+    "strategy": "F-Pattern layout with fixed left sidebar (Progress indicators) and top navigation. Action-Oriented Density: pack info efficiently using the 'Control Room' grid.",
+    "spacing_scale": "Use generous p-8 for standalone cards, but tighter p-4 for dense tables and metrics.",
+    "grid_system": "Dashboard Mode 'Control Room' - grid-cols-1 md:grid-cols-4 lg:grid-cols-12. Dense widgets that span appropriate columns (e.g., Summary col-span-1, Chart col-span-3)."
+  },
+  "components": {
+    "cards": "Flat background, 1px subtle border (border-border), no rounded corners (rounded-none or max rounded-sm). On hover: slight lift (-translate-y-1), shadow-sm.",
+    "buttons": "Square or very slightly rounded (rounded-sm). Primary uses stark contrast. Do not use gradients.",
+    "tables": "High-density DataGrids. border-collapse. Stick to subtle borders (border-border). Auto-expandable columns if needed. Monospaced font for financial columns.",
+    "compliance_banner": "Fixed top. Stark signal colors with high-contrast text to immediately grab attention.",
+    "badges": "Sharp edges, flat colors with 10% opacity background of the signal color + 100% opacity text.",
+    "sidebar": "Fixed left, border-r border-border. Clean hierarchy using text-sm, active states get a 2px left-border accent (primary)."
+  },
+  "visual_enhancers": {
+    "surfaces": "GRID BORDERS (The Technical Look). Expose the skeleton for a technical tool. Header must use Solid Background with a hard bottom border.",
+    "icons": "Phosphor Icons (@phosphor-icons/react) - crisp, geometric, professional.",
+    "animations": "Minimalist - simple opacity/transform on hover. Use framer-motion for smooth tab switching and sidebar progress.",
+    "borders": "1px solid strokes instead of soft shadows to enforce the 'Tactical Minimalism' feel."
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1633419461186-7d40a38105ec?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxtaW5pbWFsJTIwZ2VvbWV0cmljJTIwbG9nb3xlbnwwfHx8fDE3NzU1MzUzNzV8MA&ixlib=rb-4.1.0&q=85",
+        "category": "logo",
+        "description": "Minimal geometric logo for the app top nav and sidebar header"
+      },
+      {
+        "url": "https://images.pexels.com/photos/12902922/pexels-photo-12902922.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "avatar_female",
+        "description": "Employee avatar for profile and Help sections"
+      },
+      {
+        "url": "https://images.pexels.com/photos/12902931/pexels-photo-12902931.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "avatar_male",
+        "description": "Employee avatar for shift input and results screens"
+      },
+      {
+        "url": "https://images.pexels.com/photos/3137083/pexels-photo-3137083.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "background_abstract",
+        "description": "Subtle abstract architectural background for Auth or Home empty states"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Install Phosphor Icons: yarn add @phosphor-icons/react",
+    "Install other essentials: yarn add framer-motion clsx tailwind-merge lucide-react",
+    "Ensure Light/Dark mode toggle works natively via Tailwind 'dark' class.",
+    "Strict adherence to Archetype 4: Do not use random purples or teals. Stick to Black/White/Grey with strict Red/Amber/Green/Blue for compliance statuses.",
+    "Use Shadcn components heavily customized to be flat/square (remove default border-radius).",
+    "Add 'data-testid' to ALL interactive elements for robust automated testing (buttons, form inputs, navigation items).",
+    "Implement 'Control Room' grid layout for the Results dashboard to maximize data density.",
+    "For financial/rate tables, right-align the data columns and use the mono_font.",
+    "Do not use generic Inter font for headings; import Cabinet Grotesk, IBM Plex Sans, and JetBrains Mono via Google Fonts or standard imports."
+  ]
+}
