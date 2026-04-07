@@ -216,9 +216,10 @@ export default function ShiftInput({ employeeData: propEmpData, selectedAward: p
               <Input
                 type="number"
                 data-testid="break-mins-input"
-                value={form.unpaid_break_mins}
-                onChange={e => update('unpaid_break_mins', parseInt(e.target.value) || 0)}
+                value={form.unpaid_break_mins || ''}
+                onChange={e => update('unpaid_break_mins', e.target.value === '' ? 0 : parseInt(e.target.value))}
                 className="rounded-sm mt-1 font-mono"
+                placeholder="0"
               />
             </div>
             <div>
@@ -226,8 +227,8 @@ export default function ShiftInput({ employeeData: propEmpData, selectedAward: p
               <Input
                 type="number"
                 data-testid="meal-break-at-input"
-                value={form.meal_break_at}
-                onChange={e => update('meal_break_at', parseInt(e.target.value) || 0)}
+                value={form.meal_break_at || ''}
+                onChange={e => update('meal_break_at', e.target.value === '' ? 0 : parseInt(e.target.value))}
                 className="rounded-sm mt-1 font-mono"
               />
             </div>
@@ -247,9 +248,10 @@ export default function ShiftInput({ employeeData: propEmpData, selectedAward: p
               <Input
                 type="number"
                 data-testid="weekly-hours-input"
-                value={form.hours_this_week}
-                onChange={e => update('hours_this_week', parseFloat(e.target.value) || 0)}
+                value={form.hours_this_week || ''}
+                onChange={e => update('hours_this_week', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                 className="rounded-sm mt-1 font-mono"
+                placeholder="0"
               />
             </div>
             <div className="flex items-center gap-3 pt-5">
@@ -301,9 +303,10 @@ export default function ShiftInput({ employeeData: propEmpData, selectedAward: p
                 <Input
                   type="number"
                   data-testid="km-driven-input"
-                  value={form.km_driven}
-                  onChange={e => update('km_driven', parseFloat(e.target.value) || 0)}
+                  value={form.km_driven || ''}
+                  onChange={e => update('km_driven', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   className="rounded-sm mt-1 font-mono"
+                  placeholder="0"
                 />
               </div>
               <div>
@@ -340,9 +343,10 @@ export default function ShiftInput({ employeeData: propEmpData, selectedAward: p
                   <Input
                     type="number"
                     data-testid="loading-hours-input"
-                    value={form.loading_hours}
-                    onChange={e => update('loading_hours', parseFloat(e.target.value) || 0)}
+                    value={form.loading_hours || ''}
+                    onChange={e => update('loading_hours', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                     className="rounded-sm mt-1 font-mono"
+                    placeholder="0"
                   />
                 </div>
               )}
@@ -358,9 +362,10 @@ export default function ShiftInput({ employeeData: propEmpData, selectedAward: p
                   <Input
                     type="number"
                     data-testid="delay-hours-input"
-                    value={form.delay_hours}
-                    onChange={e => update('delay_hours', parseFloat(e.target.value) || 0)}
+                    value={form.delay_hours || ''}
+                    onChange={e => update('delay_hours', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                     className="rounded-sm mt-1 font-mono"
+                    placeholder="0"
                   />
                 </div>
               )}

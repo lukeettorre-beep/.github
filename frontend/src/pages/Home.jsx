@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import {
   Scales, Users, ClockCounterClockwise, ArrowRight,
-  ChartBar, Lightning
+  ChartBar, Lightning, ArrowCounterClockwise
 } from '@phosphor-icons/react';
 
-export default function Home() {
+export default function Home({ resetWorkflow }) {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ employees: 0, audits: 0, health: false });
 
@@ -114,7 +114,7 @@ export default function Home() {
       <div className="flex gap-3">
         <Button
           data-testid="start-workflow-btn"
-          onClick={() => navigate('/award-selector')}
+          onClick={() => { resetWorkflow?.(); navigate('/award-selector'); }}
           className="rounded-sm"
         >
           <Scales size={16} className="mr-2" />

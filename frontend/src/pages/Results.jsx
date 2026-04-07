@@ -6,10 +6,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '../components/ui/table';
 import {
-  Clock, CurrencyDollar, Timer, TrendUp, Coffee, ArrowLeft, Printer
+  Clock, CurrencyDollar, Timer, TrendUp, Coffee, ArrowLeft, Printer, ArrowCounterClockwise
 } from '@phosphor-icons/react';
 
-export default function Results({ calculationResult: propResult }) {
+export default function Results({ calculationResult: propResult, resetWorkflow }) {
   const navigate = useNavigate();
   const r = propResult || (() => {
     const saved = sessionStorage.getItem('ait-result');
@@ -164,9 +164,19 @@ export default function Results({ calculationResult: propResult }) {
         <Button variant="outline" onClick={() => navigate('/shift-input')} className="rounded-sm" data-testid="back-to-shift-btn">
           <ArrowLeft size={16} className="mr-2" /> Modify Shift
         </Button>
-        <Button onClick={() => navigate('/audit-trail')} className="rounded-sm" data-testid="view-audit-btn">
-          View Audit Trail
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => { resetWorkflow?.(); navigate('/award-selector'); }}
+            className="rounded-sm"
+            data-testid="new-calculation-btn"
+          >
+            <ArrowCounterClockwise size={16} className="mr-2" /> New Calculation
+          </Button>
+          <Button onClick={() => navigate('/audit-trail')} className="rounded-sm" data-testid="view-audit-btn">
+            View Audit Trail
+          </Button>
+        </div>
       </div>
     </div>
   );

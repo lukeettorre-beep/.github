@@ -60,16 +60,27 @@ function App() {
     setCompletedSteps(prev => { const next = { ...prev, 3: true, 4: true }; sessionStorage.setItem('ait-steps', JSON.stringify(next)); return next; });
   }, []);
 
+  const resetWorkflow = useCallback(() => {
+    setSelectedAward('');
+    setEmployeeData(null);
+    setCalculationResult(null);
+    setCompletedSteps({});
+    sessionStorage.removeItem('ait-award');
+    sessionStorage.removeItem('ait-employee');
+    sessionStorage.removeItem('ait-result');
+    sessionStorage.removeItem('ait-steps');
+  }, []);
+
   return (
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
           <Route element={<Layout completedSteps={completedSteps} />}>
-            <Route index element={<Home />} />
+            <Route index element={<Home resetWorkflow={resetWorkflow} />} />
             <Route path="/award-selector" element={<AwardSelector onComplete={completeStep1} />} />
             <Route path="/employee-profile" element={<EmployeeProfile selectedAward={selectedAward} onComplete={completeStep2} />} />
             <Route path="/shift-input" element={<ShiftInput employeeData={employeeData} selectedAward={selectedAward} onComplete={completeStep3} />} />
-            <Route path="/results" element={<Results calculationResult={calculationResult} />} />
+            <Route path="/results" element={<Results calculationResult={calculationResult} resetWorkflow={resetWorkflow} />} />
             <Route path="/warnings" element={<Warnings />} />
             <Route path="/classification" element={<Classification />} />
             <Route path="/audit-trail" element={<AuditTrail />} />

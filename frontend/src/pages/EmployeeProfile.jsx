@@ -202,9 +202,10 @@ export default function EmployeeProfile({ selectedAward: propAward, onComplete }
                 data-testid="pay-rate-input"
                 type="number"
                 step="0.01"
-                value={form.pay_rate}
-                onChange={e => update('pay_rate', parseFloat(e.target.value) || 0)}
+                value={form.pay_rate === 0 ? '' : form.pay_rate}
+                onChange={e => update('pay_rate', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                 className="rounded-sm mt-1 font-mono"
+                placeholder="0.00"
               />
             </div>
           </div>
@@ -215,9 +216,10 @@ export default function EmployeeProfile({ selectedAward: propAward, onComplete }
               <Input
                 data-testid="pt-hours-input"
                 type="number"
-                value={form.pt_agreed_hours}
-                onChange={e => update('pt_agreed_hours', parseFloat(e.target.value) || 0)}
+                value={form.pt_agreed_hours === 0 ? '' : form.pt_agreed_hours}
+                onChange={e => update('pt_agreed_hours', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                 className="rounded-sm mt-1 w-32"
+                placeholder="0"
               />
             </div>
           )}
