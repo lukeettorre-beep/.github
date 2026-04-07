@@ -26,23 +26,33 @@ Build a production-ready "Award Interpreter Tool" web application for HR/payroll
 - Responsive design
 
 ## What's Been Implemented (Feb 2026)
+### Core (v1.0)
 - [x] Full 4-step workflow: Award Selector → Employee Profile → Shift Input → Results
-- [x] All 10 pages: Home, AwardSelector, EmployeeProfile, ShiftInput, Results, Warnings, Classification, AuditTrail, Admin, Help
+- [x] All 10 pages + 11 new feature pages (21 total)
 - [x] Complete rules engine for all 3 awards (Clerks, RTD, RTLDO)
-- [x] Clerks: OT (first 2hr 150%, after 2hr 200%), Saturday (125%), Sunday (200%), PH (250%), shiftwork premiums, break compliance
-- [x] RTD: OT daily reset, casual OT (Cl 11.4 - no 25% loading), Saturday (150%), Sunday (200%), Good Fri/Xmas (300%), early morning (+30%)
-- [x] RTLDO: CPK and hourly payment, loading/unloading (min 1hr each), delay/breakdown (max 8hr), casual/PT multipliers
-- [x] Junior employee rates (age-based %)
 - [x] Admin editable rate tables (password: admin123)
-- [x] Audit trail with CSV export
-- [x] MongoDB persistence for all data
-- [x] Light/dark mode toggle
-- [x] Responsive design with sidebar + top nav
-- [x] Compliance banner (non-dismissible)
-- [x] Session persistence for workflow state
-- [x] Plain English explanation sections A-E
-- [x] KPI cards on results page
-- [x] **Batch Import** — CSV upload with drag & drop, preview table, batch calculation across all 3 awards, summary KPIs, results table with export, auto rate lookup, error handling with row numbers
+- [x] Audit trail with CSV export, MongoDB persistence, Light/dark mode, Responsive design
+
+### Revenue / Efficiency (v2.0)
+- [x] **Roster Templates** — Define standard weekly rosters, auto-generate batch shifts for pay periods
+- [x] **Payroll System Integration** — Export to MYOB, Xero, KeyPay CSV formats
+- [x] **PDF Report Generation** — Printable/saveable shift pay reports
+- [x] **Batch Import** — CSV upload with drag & drop for bulk shift calculation
+
+### Compliance & Accuracy (v2.0)
+- [x] **Weekly OT Tracking** — Cumulative hours per employee/week with 38hr threshold alerts
+- [x] **Annualised Salary Reconciliation** — Compare salary vs award entitlements, detect underpayment risk
+- [x] **Rate Update Alerts** — Monitor rate table freshness, detect custom deviations from defaults
+- [x] **NES Leave Calculator** — Annual leave, personal/carer's leave, long service leave calculations
+
+### User Experience (v2.0)
+- [x] **Shift Calendar View** — Visual monthly calendar with shift data overlay
+- [x] **Real-Time Validation** — Inline warnings for OT threshold, break violations, weekly hours
+
+### Data & Reporting (v2.0)
+- [x] **Analytics Dashboard** — KPI cards, pie chart by award, monthly trend, top employees
+- [x] **What-If Comparison Tool** — Compare pay outcomes across employment types, days, awards
+- [x] **Bulk Employee Import** — CSV upload for employee profiles with auto rate lookup
 
 ## Prioritized Backlog
 ### P0 (Critical)
