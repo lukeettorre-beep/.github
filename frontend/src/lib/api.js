@@ -25,6 +25,49 @@ export const calculateShift = (data) => api.post('/calculate', data).then(r => r
 export const batchCalculate = (shifts) => api.post('/batch-calculate', { shifts }).then(r => r.data);
 export const batchTemplateCSV = () => `${API}/batch-template/csv`;
 
+// Roster Templates
+export const getRosterTemplates = () => api.get('/roster-templates').then(r => r.data);
+export const createRosterTemplate = (data) => api.post('/roster-templates', data).then(r => r.data);
+export const updateRosterTemplate = (id, data) => api.put(`/roster-templates/${id}`, data).then(r => r.data);
+export const deleteRosterTemplate = (id) => api.delete(`/roster-templates/${id}`).then(r => r.data);
+export const generateFromRoster = (id, data) => api.post(`/roster-templates/${id}/generate`, data).then(r => r.data);
+
+// Shifts (Calendar)
+export const getShifts = (params) => api.get('/shifts', { params }).then(r => r.data);
+export const saveShift = (data) => api.post('/shifts', data).then(r => r.data);
+export const deleteShift = (id) => api.delete(`/shifts/${id}`).then(r => r.data);
+
+// Weekly OT
+export const getWeeklyOT = (params) => api.get('/weekly-ot', { params }).then(r => r.data);
+
+// Annualised Salary
+export const annualisedReconcile = (data) => api.post('/annualised-reconcile', data).then(r => r.data);
+
+// Rate Alerts
+export const getRateAlerts = () => api.get('/rate-alerts').then(r => r.data);
+export const resetRateDefaults = (code) => api.post(`/rate-alerts/reset-defaults/${code}`).then(r => r.data);
+
+// Leave Calculator
+export const calculateLeave = (data) => api.post('/leave-calculate', data).then(r => r.data);
+
+// Analytics
+export const getAnalyticsSummary = () => api.get('/analytics/summary').then(r => r.data);
+export const getAnalyticsTrends = () => api.get('/analytics/trends').then(r => r.data);
+
+// Comparison
+export const compareScenarios = (data) => api.post('/compare', data).then(r => r.data);
+
+// Bulk Employee Import
+export const bulkImportEmployees = (employees) => api.post('/employees/bulk-import', { employees }).then(r => r.data);
+export const employeeTemplateCSV = () => `${API}/employees/bulk-template/csv`;
+
+// Payroll Export
+export const payrollExportURL = (format, params) => {
+  const url = `${API}/payroll-export/${format}`;
+  return api.post(url, params).then(r => r.data);
+};
+export const getPayrollExport = (format, params) => `${API}/payroll-export/${format}`;
+
 // Audit Trail
 export const getAuditTrail = () => api.get('/audit-trail').then(r => r.data);
 export const exportAuditCSV = () => `${API}/audit-trail/csv`;

@@ -1135,7 +1135,521 @@ async def batch_template_csv():
 
 @api_router.get("/health")
 async def health():
-    return {"status": "healthy", "version": "1.0.0"}
+    return {"status": "healthy", "version": "2.0.0"}
+
+
+# ─── Roster Templates ───
+
+class RosterShift(BaseModel):
+    day_of_week: str = "Monday"
+    start_time: str = "08:00"
+    finish_time: str = "16:30"
+    unpaid_break_mins: int = 30
+    notes: str = ""
+
+class RosterTemplate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    award_code: str
+    employment_type: str = "full_time"
+    classification: str = ""
+    shifts: List[Dict[str, Any]] = []
+    created_at: str = ""
+
+@api_router.get("/roster-templates")
+async def get_roster_templates():
+    return await db.roster_templates.find({}, {"_id": 0}).to_list(100)
+
+@api_router.post("/roster-templates")
+async def create_roster_template(tpl: RosterTemplate):
+    doc = tpl.model_dump()
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.roster_templates.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+@api_router.put("/roster-templates/{tpl_id}")
+async def update_roster_template(tpl_id: str, body: Dict[str, Any]):
+    body.pop("_id", None)
+    body.pop("id", None)
+    await db.roster_templates.update_one({"id": tpl_id}, {"$set": body})
+    return await db.roster_templates.find_one({"id": tpl_id}, {"_id": 0})
+
+@api_router.delete("/roster-templates/{tpl_id}")
+async def delete_roster_template(tpl_id: str):
+    await db.roster_templates.delete_one({"id": tpl_id})
+    return {"status": "deleted"}
+
+@api_router.post("/roster-templates/{tpl_id}/generate")
+async def generate_from_roster(tpl_id: str, body: Dict[str, Any]):
+    tpl = await db.roster_templates.find_one({"id": tpl_id}, {"_id": 0})
+    if not tpl:
+        raise HTTPException(404, "Template not found")
+    week_start = body.get("week_start", "")
+    employee_id = body.get("employee_id", "")
+    if not week_start:
+        raise HTTPException(400, "week_start required (YYYY-MM-DD)")
+    from datetime import timedelta
+    base = datetime.strptime(week_start, "%Y-%m-%d")
+    day_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
+    # Look up pay rate
+    pay_rate = 0
+    rates_doc = await db.rate_tables.find_one({"award_code": tpl["award_code"]}, {"_id": 0})
+    if rates_doc:
+        for cls in rates_doc.get("classifications", []):
+            if cls["code"] == tpl.get("classification", ""):
+                pay_rate = cls["hourly_rate"]
+                break
+    generated = []
+    for s in tpl.get("shifts", []):
+        day_offset = day_map.get(s.get("day_of_week", "Monday"), 0)
+        shift_date = base + timedelta(days=day_offset)
+        generated.append({
+            "employee_id": employee_id or "ROSTER",
+            "award_code": tpl["award_code"],
+            "employment_type": tpl.get("employment_type", "full_time"),
+            "classification": tpl.get("classification", ""),
+            "pay_rate": pay_rate,
+            "date": shift_date.strftime("%Y-%m-%d"),
+            "day_of_week": s.get("day_of_week", "Monday"),
+            "start_time": s.get("start_time", "08:00"),
+            "finish_time": s.get("finish_time", "16:30"),
+            "unpaid_break_mins": s.get("unpaid_break_mins", 30),
+            "notes": s.get("notes", ""),
+        })
+    return {"shifts": generated, "template_name": tpl["name"]}
+
+
+# ─── Shifts CRUD (for calendar) ───
+
+@api_router.post("/shifts")
+async def save_shift(body: Dict[str, Any]):
+    body["id"] = body.get("id", str(uuid.uuid4()))
+    body["saved_at"] = datetime.now(timezone.utc).isoformat()
+    body.pop("_id", None)
+    await db.shifts.insert_one(body)
+    return {k: v for k, v in body.items() if k != "_id"}
+
+@api_router.get("/shifts")
+async def get_shifts(employee_id: str = "", month: str = ""):
+    query = {}
+    if employee_id:
+        query["employee_id"] = employee_id
+    if month:
+        query["date"] = {"$regex": f"^{month}"}
+    return await db.shifts.find(query, {"_id": 0}).sort("date", 1).to_list(1000)
+
+@api_router.delete("/shifts/{shift_id}")
+async def delete_shift(shift_id: str):
+    await db.shifts.delete_one({"id": shift_id})
+    return {"status": "deleted"}
+
+
+# ─── Weekly OT Tracking ───
+
+@api_router.get("/weekly-ot")
+async def get_weekly_ot(employee_id: str = "", week_start: str = ""):
+    if not week_start:
+        raise HTTPException(400, "week_start required (YYYY-MM-DD)")
+    from datetime import timedelta
+    base = datetime.strptime(week_start, "%Y-%m-%d")
+    week_end = base + timedelta(days=6)
+    query = {"shift_date": {"$gte": week_start, "$lte": week_end.strftime("%Y-%m-%d")}, "action": {"$in": ["CALCULATION", "BATCH_CALC"]}}
+    if employee_id:
+        query["employee_id"] = employee_id
+    entries = await db.audit_trail.find(query, {"_id": 0}).sort("shift_date", 1).to_list(500)
+    by_employee = {}
+    for e in entries:
+        eid = e.get("employee_id", "UNKNOWN")
+        if eid not in by_employee:
+            by_employee[eid] = {"employee_id": eid, "shifts": [], "total_hours": 0, "total_ot": 0, "total_pay": 0, "award_code": e.get("award_code", "")}
+        total_hrs = sum(c.get("quantity", 0) for c in e.get("components", []) if "Ordinary" in c.get("component", "") or "Hour" in c.get("component", ""))
+        ot_hrs = sum(c.get("quantity", 0) for c in e.get("components", []) if "Overtime" in c.get("component", "") or "OT" in c.get("component", ""))
+        if total_hrs == 0:
+            total_hrs = sum(c.get("quantity", 0) for c in e.get("components", []))
+        by_employee[eid]["shifts"].append({
+            "date": e.get("shift_date", ""),
+            "total_pay": e.get("total_pay", 0),
+            "hours": round(total_hrs, 2),
+            "ot_hours": round(ot_hrs, 2),
+        })
+        by_employee[eid]["total_hours"] += total_hrs
+        by_employee[eid]["total_ot"] += ot_hrs
+        by_employee[eid]["total_pay"] += e.get("total_pay", 0)
+    for eid in by_employee:
+        by_employee[eid]["total_hours"] = round(by_employee[eid]["total_hours"], 2)
+        by_employee[eid]["total_ot"] = round(by_employee[eid]["total_ot"], 2)
+        by_employee[eid]["total_pay"] = round(by_employee[eid]["total_pay"], 2)
+        by_employee[eid]["weekly_threshold"] = 38
+        by_employee[eid]["ot_triggered"] = by_employee[eid]["total_hours"] > 38
+    return {"week_start": week_start, "week_end": week_end.strftime("%Y-%m-%d"), "employees": list(by_employee.values())}
+
+
+# ─── Annualised Salary Reconciliation ───
+
+class AnnualisedInput(BaseModel):
+    employee_id: str
+    award_code: str
+    classification: str
+    annual_salary: float
+    hours_per_week: float = 38
+    weeks_worked: int = 52
+    shifts: List[Dict[str, Any]] = []
+
+@api_router.post("/annualised-reconcile")
+async def annualised_reconcile(data: AnnualisedInput):
+    d = data.model_dump()
+    annual_salary = d["annual_salary"]
+    weeks = d["weeks_worked"]
+    weekly_salary = annual_salary / weeks
+    hourly_equiv = weekly_salary / d["hours_per_week"]
+    # Look up award rate
+    rates_doc = await db.rate_tables.find_one({"award_code": d["award_code"]}, {"_id": 0})
+    award_rate = 0
+    if rates_doc:
+        for cls in rates_doc.get("classifications", []):
+            if cls["code"] == d["classification"]:
+                award_rate = cls["hourly_rate"]
+                break
+    award_annual = award_rate * d["hours_per_week"] * weeks
+    # Calculate total entitlement from provided shifts
+    total_award_entitlement = 0
+    if d.get("shifts"):
+        for s in d["shifts"]:
+            s["award_code"] = d["award_code"]
+            s["employment_type"] = s.get("employment_type", "full_time")
+            s["classification"] = d["classification"]
+            s["pay_rate"] = award_rate
+            try:
+                r_doc = rates_doc or DEFAULT_RATES.get(d["award_code"], {})
+                if d["award_code"] == "MA000002":
+                    res = await calculate_clerks(s, r_doc)
+                elif d["award_code"] == "MA000038":
+                    res = await calculate_rtd(s, r_doc)
+                else:
+                    res = await calculate_rtldo(s, r_doc)
+                total_award_entitlement += res["estimated_pay"]
+            except Exception:
+                pass
+    shortfall = max(0, award_annual - annual_salary)
+    surplus = max(0, annual_salary - award_annual)
+    return {
+        "annual_salary": annual_salary,
+        "hourly_equivalent": round(hourly_equiv, 2),
+        "award_base_rate": award_rate,
+        "award_base_annual": round(award_annual, 2),
+        "difference": round(annual_salary - award_annual, 2),
+        "status": "COMPLIANT" if annual_salary >= award_annual else "UNDERPAYMENT_RISK",
+        "shortfall": round(shortfall, 2),
+        "surplus": round(surplus, 2),
+        "total_shift_entitlement": round(total_award_entitlement, 2) if total_award_entitlement > 0 else None,
+        "note": "Annualised salary must not result in employee receiving less than award entitlements over the reconciliation period."
+    }
+
+
+# ─── Rate Alerts ───
+
+@api_router.get("/rate-alerts")
+async def check_rate_alerts():
+    alerts = []
+    stored = await db.rate_tables.find({}, {"_id": 0}).to_list(10)
+    for table in stored:
+        updated = table.get("updated_at", "")
+        if updated:
+            updated_dt = datetime.fromisoformat(updated.replace("Z", "+00:00")) if updated else None
+            if updated_dt:
+                age_days = (datetime.now(timezone.utc) - updated_dt).days
+                if age_days > 365:
+                    alerts.append({
+                        "award_code": table["award_code"],
+                        "award_name": table.get("award_name", ""),
+                        "severity": "high",
+                        "message": f"Rate table last updated {age_days} days ago. Fair Work rates update annually (1 July). Review and update rates.",
+                        "last_updated": updated,
+                        "days_since_update": age_days,
+                    })
+                elif age_days > 180:
+                    alerts.append({
+                        "award_code": table["award_code"],
+                        "award_name": table.get("award_name", ""),
+                        "severity": "medium",
+                        "message": f"Rate table is {age_days} days old. Consider checking for updates.",
+                        "last_updated": updated,
+                        "days_since_update": age_days,
+                    })
+        # Check against defaults for drift
+        default = DEFAULT_RATES.get(table["award_code"])
+        if default:
+            for cls in table.get("classifications", []):
+                default_cls = next((c for c in default["classifications"] if c["code"] == cls["code"]), None)
+                if default_cls and abs(cls["hourly_rate"] - default_cls["hourly_rate"]) > 0.01:
+                    alerts.append({
+                        "award_code": table["award_code"],
+                        "severity": "info",
+                        "message": f"{cls['code']}: Custom rate ${cls['hourly_rate']:.2f} differs from default ${default_cls['hourly_rate']:.2f}",
+                        "classification": cls["code"],
+                        "current_rate": cls["hourly_rate"],
+                        "default_rate": default_cls["hourly_rate"],
+                    })
+    return {"alerts": alerts, "total": len(alerts)}
+
+@api_router.post("/rate-alerts/reset-defaults/{award_code}")
+async def reset_rate_defaults(award_code: str):
+    if award_code not in DEFAULT_RATES:
+        raise HTTPException(404, "Award not found")
+    default = DEFAULT_RATES[award_code].copy()
+    default["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.rate_tables.update_one({"award_code": award_code}, {"$set": default}, upsert=True)
+    return {"status": "reset", "award_code": award_code}
+
+
+# ─── NES Leave Calculator ───
+
+class LeaveInput(BaseModel):
+    employment_type: str = "full_time"
+    hours_per_week: float = 38
+    years_of_service: float = 1.0
+    hourly_rate: float = 25.74
+    leave_taken_hours: float = 0
+    personal_leave_taken: float = 0
+
+@api_router.post("/leave-calculate")
+async def calculate_leave(data: LeaveInput):
+    d = data.model_dump()
+    emp_type = d["employment_type"]
+    hrs_week = d["hours_per_week"]
+    years = d["years_of_service"]
+    rate = d["hourly_rate"]
+    # NES: 4 weeks annual leave (FT/PT), 10 days personal leave
+    if emp_type == "casual":
+        return {
+            "annual_leave": {"hours_accrued": 0, "hours_remaining": 0, "value": 0, "note": "Casual employees receive 25% loading in lieu of leave."},
+            "personal_leave": {"hours_accrued": 0, "hours_remaining": 0, "value": 0, "note": "Casual employees not entitled to personal leave."},
+            "long_service_leave": {"hours_accrued": 0, "value": 0, "note": "LSL varies by state. Typically after 7-10 years."},
+        }
+    annual_weeks = 4
+    annual_hrs_year = annual_weeks * hrs_week
+    annual_accrued = annual_hrs_year * years
+    annual_remaining = max(0, annual_accrued - d["leave_taken_hours"])
+    personal_hrs_year = (10 / 5) * hrs_week  # 10 days = 2 weeks
+    personal_accrued = personal_hrs_year * years
+    personal_remaining = max(0, personal_accrued - d["personal_leave_taken"])
+    # LSL: ~8.67 weeks after 10 years (varies by state, using common)
+    lsl_weeks = 0
+    if years >= 7:
+        lsl_weeks = (years / 10) * 8.67
+    lsl_hrs = lsl_weeks * hrs_week
+    return {
+        "annual_leave": {
+            "weeks_per_year": annual_weeks,
+            "hours_accrued": round(annual_accrued, 1),
+            "hours_remaining": round(annual_remaining, 1),
+            "value": round(annual_remaining * rate, 2),
+            "note": "4 weeks (FT/PT) per year under NES s87."
+        },
+        "personal_leave": {
+            "days_per_year": 10,
+            "hours_accrued": round(personal_accrued, 1),
+            "hours_remaining": round(personal_remaining, 1),
+            "value": round(personal_remaining * rate, 2),
+            "note": "10 days per year (cumulative) under NES s96."
+        },
+        "long_service_leave": {
+            "eligible": years >= 7,
+            "years_required": 7,
+            "hours_accrued": round(lsl_hrs, 1),
+            "value": round(lsl_hrs * rate, 2),
+            "note": "LSL varies by state/territory. Typically 8.67 weeks after 10 years of continuous service."
+        },
+        "summary": {
+            "total_leave_value": round(annual_remaining * rate + personal_remaining * rate + lsl_hrs * rate, 2),
+            "employment_type": emp_type,
+            "years_of_service": years,
+        }
+    }
+
+
+# ─── Analytics ───
+
+@api_router.get("/analytics/summary")
+async def analytics_summary():
+    total_calcs = await db.audit_trail.count_documents({"action": {"$in": ["CALCULATION", "BATCH_CALC"]}})
+    total_employees = await db.employees.count_documents({})
+    # Pay by award
+    pipeline = [
+        {"$match": {"action": {"$in": ["CALCULATION", "BATCH_CALC"]}}},
+        {"$group": {"_id": "$award_code", "total_pay": {"$sum": "$total_pay"}, "count": {"$sum": 1}}},
+    ]
+    by_award = await db.audit_trail.aggregate(pipeline).to_list(10)
+    # Recent calculations
+    recent = await db.audit_trail.find({"action": {"$in": ["CALCULATION", "BATCH_CALC"]}}, {"_id": 0}).sort("timestamp", -1).to_list(10)
+    # Top employees by pay
+    emp_pipeline = [
+        {"$match": {"action": {"$in": ["CALCULATION", "BATCH_CALC"]}}},
+        {"$group": {"_id": "$employee_id", "total_pay": {"$sum": "$total_pay"}, "shift_count": {"$sum": 1}}},
+        {"$sort": {"total_pay": -1}},
+        {"$limit": 10}
+    ]
+    top_employees = await db.audit_trail.aggregate(emp_pipeline).to_list(10)
+    return {
+        "total_calculations": total_calcs,
+        "total_employees": total_employees,
+        "by_award": [{"award_code": a["_id"], "total_pay": round(a["total_pay"], 2), "count": a["count"]} for a in by_award],
+        "recent_calculations": recent[:10],
+        "top_employees": [{"employee_id": e["_id"], "total_pay": round(e["total_pay"], 2), "shift_count": e["shift_count"]} for e in top_employees],
+    }
+
+@api_router.get("/analytics/trends")
+async def analytics_trends():
+    pipeline = [
+        {"$match": {"action": {"$in": ["CALCULATION", "BATCH_CALC"]}}},
+        {"$addFields": {"date_part": {"$substr": ["$shift_date", 0, 7]}}},
+        {"$group": {"_id": "$date_part", "total_pay": {"$sum": "$total_pay"}, "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}},
+        {"$limit": 24}
+    ]
+    monthly = await db.audit_trail.aggregate(pipeline).to_list(24)
+    # By day of week
+    dow_pipeline = [
+        {"$match": {"action": {"$in": ["CALCULATION", "BATCH_CALC"]}}},
+        {"$group": {"_id": "$shift_date", "total_pay": {"$sum": "$total_pay"}, "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    daily = await db.audit_trail.aggregate(dow_pipeline).to_list(100)
+    return {
+        "monthly": [{"month": m["_id"], "total_pay": round(m["total_pay"], 2), "count": m["count"]} for m in monthly],
+        "daily": [{"date": d["_id"], "total_pay": round(d["total_pay"], 2), "count": d["count"]} for d in daily],
+    }
+
+
+# ─── Comparison Tool ───
+
+class ComparisonRequest(BaseModel):
+    base_shift: Dict[str, Any]
+    scenarios: List[Dict[str, Any]]
+
+@api_router.post("/compare")
+async def compare_scenarios(data: ComparisonRequest):
+    d = data.model_dump()
+    base = d["base_shift"]
+    results = []
+    # Calculate base
+    base["award_code"] = base.get("award_code", "MA000002")
+    rates_doc = await db.rate_tables.find_one({"award_code": base["award_code"]}, {"_id": 0})
+    if not rates_doc:
+        rates_doc = DEFAULT_RATES.get(base["award_code"], {})
+    if not base.get("pay_rate") and base.get("classification"):
+        for cls in rates_doc.get("classifications", []):
+            if cls["code"] == base["classification"]:
+                base["pay_rate"] = cls["hourly_rate"]
+                break
+    try:
+        if base["award_code"] == "MA000002":
+            base_result = await calculate_clerks(base, rates_doc)
+        elif base["award_code"] == "MA000038":
+            base_result = await calculate_rtd(base, rates_doc)
+        else:
+            base_result = await calculate_rtldo(base, rates_doc)
+        results.append({"label": "Base Scenario", "is_base": True, **base_result})
+    except Exception as e:
+        return {"error": f"Base calculation failed: {str(e)}"}
+    # Calculate scenarios
+    for i, scenario in enumerate(d["scenarios"]):
+        merged = {**base, **scenario}
+        merged["award_code"] = merged.get("award_code", base["award_code"])
+        s_rates = await db.rate_tables.find_one({"award_code": merged["award_code"]}, {"_id": 0})
+        if not s_rates:
+            s_rates = DEFAULT_RATES.get(merged["award_code"], {})
+        if not merged.get("pay_rate") and merged.get("classification"):
+            for cls in s_rates.get("classifications", []):
+                if cls["code"] == merged["classification"]:
+                    merged["pay_rate"] = cls["hourly_rate"]
+                    break
+        try:
+            if merged["award_code"] == "MA000002":
+                s_result = await calculate_clerks(merged, s_rates)
+            elif merged["award_code"] == "MA000038":
+                s_result = await calculate_rtd(merged, s_rates)
+            else:
+                s_result = await calculate_rtldo(merged, s_rates)
+            diff = round(s_result["estimated_pay"] - base_result["estimated_pay"], 2)
+            pct = round((diff / base_result["estimated_pay"]) * 100, 1) if base_result["estimated_pay"] > 0 else 0
+            results.append({"label": scenario.get("label", f"Scenario {i+1}"), "is_base": False, "diff": diff, "diff_pct": pct, **s_result})
+        except Exception as e:
+            results.append({"label": scenario.get("label", f"Scenario {i+1}"), "error": str(e)})
+    return {"results": results}
+
+
+# ─── Bulk Employee Import ───
+
+class BulkEmployeeRequest(BaseModel):
+    employees: List[Dict[str, Any]]
+
+@api_router.post("/employees/bulk-import")
+async def bulk_import_employees(data: BulkEmployeeRequest):
+    imported = 0
+    errors = []
+    for i, emp in enumerate(data.employees):
+        try:
+            emp["id"] = emp.get("id", str(uuid.uuid4()))
+            emp["created_at"] = datetime.now(timezone.utc).isoformat()
+            emp.pop("_id", None)
+            # Auto look up pay rate
+            if not emp.get("pay_rate") and emp.get("classification") and emp.get("award_code"):
+                rates_doc = await db.rate_tables.find_one({"award_code": emp["award_code"]}, {"_id": 0})
+                if rates_doc:
+                    for cls in rates_doc.get("classifications", []):
+                        if cls["code"] == emp["classification"]:
+                            emp["pay_rate"] = cls["hourly_rate"]
+                            break
+            await db.employees.insert_one(emp)
+            imported += 1
+        except Exception as e:
+            errors.append({"row": i + 1, "error": str(e)})
+    return {"imported": imported, "errors": errors, "total": len(data.employees)}
+
+@api_router.get("/employees/bulk-template/csv")
+async def employee_template_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["employee_id", "employing_entity", "award_code", "employment_type", "classification", "pay_rate", "shiftwork", "payment_method"])
+    writer.writerow(["EMP-001", "Acme Pty Ltd", "MA000002", "full_time", "L1Y1", "25.74", "none", "hourly"])
+    writer.writerow(["EMP-002", "Acme Pty Ltd", "MA000038", "casual", "G3", "26.32", "none", "hourly"])
+    writer.writerow(["EMP-003", "Haulage Co", "MA000039", "full_time", "G5", "40.52", "none", "cpk"])
+    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=employee_template.csv"})
+
+
+# ─── Payroll Export ───
+
+@api_router.post("/payroll-export/{format_type}")
+async def payroll_export(format_type: str, body: Dict[str, Any]):
+    shift_ids = body.get("audit_ids", [])
+    date_from = body.get("date_from", "")
+    date_to = body.get("date_to", "")
+    query = {"action": {"$in": ["CALCULATION", "BATCH_CALC"]}}
+    if date_from and date_to:
+        query["shift_date"] = {"$gte": date_from, "$lte": date_to}
+    entries = await db.audit_trail.find(query, {"_id": 0}).sort("shift_date", 1).to_list(5000)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    if format_type == "myob":
+        writer.writerow(["Co./Last Name", "First Name", "Pay Date", "Hours", "Rate", "Amount", "Pay Item", "Notes"])
+        for e in entries:
+            for c in e.get("components", []):
+                writer.writerow([e.get("employee_id", ""), "", e.get("shift_date", ""), c.get("quantity", 0), c.get("unit_rate", 0), c.get("amount", 0), c.get("component", ""), c.get("clause", "")])
+    elif format_type == "xero":
+        writer.writerow(["EmployeeID", "PayRunDate", "EarningsType", "Hours", "Rate", "Amount", "Description"])
+        for e in entries:
+            for c in e.get("components", []):
+                earnings_type = "Ordinary" if "Ordinary" in c.get("component", "") else "Overtime" if "OT" in c.get("component", "") or "Overtime" in c.get("component", "") else "Allowance" if "Allowance" in c.get("component", "") else "Penalty"
+                writer.writerow([e.get("employee_id", ""), e.get("shift_date", ""), earnings_type, c.get("quantity", 0), c.get("unit_rate", 0), c.get("amount", 0), c.get("component", "")])
+    else:  # keypay / generic
+        writer.writerow(["EmployeeID", "Award", "Date", "Component", "Hours", "RateMultiplier", "UnitRate", "Amount", "Clause"])
+        for e in entries:
+            for c in e.get("components", []):
+                writer.writerow([e.get("employee_id", ""), e.get("award_code", ""), e.get("shift_date", ""), c.get("component", ""), c.get("quantity", 0), c.get("rate_mult", 1), c.get("unit_rate", 0), c.get("amount", 0), c.get("clause", "")])
+    filename = f"payroll_export_{format_type}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
 # Include router and middleware

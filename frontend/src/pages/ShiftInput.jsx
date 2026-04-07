@@ -13,6 +13,25 @@ import { Textarea } from '../components/ui/textarea';
 import { ArrowRight, ArrowLeft, Clock, Truck, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
+function getRealtimeWarnings(form, selectedAward, employeeData) {
+  const warns = [];
+  if (!form.date) return warns;
+  const startH = form.start_time ? parseInt(form.start_time.split(':')[0]) + parseInt(form.start_time.split(':')[1] || 0) / 60 : 0;
+  const finishH = form.finish_time ? parseInt(form.finish_time.split(':')[0]) + parseInt(form.finish_time.split(':')[1] || 0) / 60 : 0;
+  const rawHrs = finishH <= startH ? (finishH + 24 - startH) : (finishH - startH);
+  const netHrs = rawHrs - (form.unpaid_break_mins || 0) / 60;
+
+  if (selectedAward === 'MA000002' && netHrs > 10) warns.push({ msg: `Shift exceeds 10hr max ordinary (Clerks). ${(netHrs - 10).toFixed(1)}hrs will be overtime.`, severity: 'warning' });
+  if (selectedAward === 'MA000038' && netHrs > 8) warns.push({ msg: `Shift exceeds 8hr ordinary span (RTD). ${(netHrs - 8).toFixed(1)}hrs likely overtime.`, severity: 'warning' });
+  if (netHrs > 5 && form.unpaid_break_mins < 30) warns.push({ msg: 'Meal break of at least 30 mins required after 5 hours. Missing break penalty (200%) will apply.', severity: 'error' });
+  if (form.day_of_week === 'Sunday') warns.push({ msg: 'Sunday work — penalty rates apply (200% FT/PT, 225% casual).', severity: 'info' });
+  if (form.day_of_week === 'Saturday') warns.push({ msg: 'Saturday work — penalty rates apply.', severity: 'info' });
+  if (form.is_public_holiday !== 'no') warns.push({ msg: `Public holiday — elevated penalty rates apply. Min 4hr engagement.`, severity: 'info' });
+  if (form.hours_this_week + netHrs > 38) warns.push({ msg: `Weekly total will reach ${(form.hours_this_week + netHrs).toFixed(1)}hrs — exceeds 38hr threshold. Weekly OT may apply.`, severity: 'warning' });
+  if (selectedAward === 'MA000039' && employeeData?.payment_method === 'cpk' && form.km_driven < 500 && employeeData?.employment_type === 'casual') warns.push({ msg: 'Casual RTLDO: minimum 500km per engagement. Current km below minimum.', severity: 'warning' });
+  return warns;
+}
+
 export default function ShiftInput({ employeeData: propEmpData, selectedAward: propAward, onComplete }) {
   const navigate = useNavigate();
   const selectedAward = propAward || sessionStorage.getItem('ait-award') || '';
@@ -349,6 +368,31 @@ export default function ShiftInput({ employeeData: propEmpData, selectedAward: p
           </CardContent>
         </Card>
       )}
+
+      {/* Real-Time Validation Warnings */}
+      {(() => {
+        const rtWarnings = getRealtimeWarnings(form, selectedAward, employeeData);
+        if (rtWarnings.length === 0) return null;
+        return (
+          <Card className="rounded-sm border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800" data-testid="realtime-warnings">
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-xs flex items-center gap-2 text-amber-700 dark:text-amber-400"><Warning size={14} /> Real-Time Validation</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 space-y-1">
+              {rtWarnings.map((w, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <span className={`text-[9px] font-bold uppercase px-1 py-0 rounded-sm flex-shrink-0 ${
+                    w.severity === 'error' ? 'bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                    w.severity === 'warning' ? 'bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-200' :
+                    'bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                  }`}>{w.severity}</span>
+                  <span>{w.msg}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Notes */}
       <Card className="rounded-sm border">
