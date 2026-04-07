@@ -42,6 +42,7 @@ Build a production-ready "Award Interpreter Tool" web application for HR/payroll
 - [x] Session persistence for workflow state
 - [x] Plain English explanation sections A-E
 - [x] KPI cards on results page
+- [x] **Batch Import** — CSV upload with drag & drop, preview table, batch calculation across all 3 awards, summary KPIs, results table with export, auto rate lookup, error handling with row numbers
 
 ## Prioritized Backlog
 ### P0 (Critical)
