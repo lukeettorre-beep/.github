@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getRateTables } from '../lib/api';
+import { getRateTables, seedRates } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
@@ -11,7 +11,9 @@ export default function Classification() {
   const [rateTables, setRateTables] = useState([]);
 
   useEffect(() => {
-    getRateTables().then(setRateTables).catch(console.error);
+    seedRates().then(() => getRateTables()).then(tables => {
+      setRateTables(tables);
+    }).catch(console.error);
   }, []);
 
   return (

@@ -13,8 +13,13 @@ import { Textarea } from '../components/ui/textarea';
 import { ArrowRight, ArrowLeft, Clock, Truck, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
-export default function ShiftInput({ employeeData, selectedAward, onComplete }) {
+export default function ShiftInput({ employeeData: propEmpData, selectedAward: propAward, onComplete }) {
   const navigate = useNavigate();
+  const selectedAward = propAward || sessionStorage.getItem('ait-award') || '';
+  const employeeData = propEmpData || (() => {
+    const saved = sessionStorage.getItem('ait-employee');
+    return saved ? JSON.parse(saved) : null;
+  })();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     date: '',

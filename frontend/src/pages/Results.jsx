@@ -9,9 +9,12 @@ import {
   Clock, CurrencyDollar, Timer, TrendUp, Coffee, ArrowLeft, Printer
 } from '@phosphor-icons/react';
 
-export default function Results({ calculationResult }) {
+export default function Results({ calculationResult: propResult }) {
   const navigate = useNavigate();
-  const r = calculationResult;
+  const r = propResult || (() => {
+    const saved = sessionStorage.getItem('ait-result');
+    return saved ? JSON.parse(saved) : null;
+  })();
 
   if (!r) {
     return (

@@ -11,8 +11,9 @@ import { Switch } from '../components/ui/switch';
 import { ArrowRight, ArrowLeft, UserCircle } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
-export default function EmployeeProfile({ selectedAward, onComplete }) {
+export default function EmployeeProfile({ selectedAward: propAward, onComplete }) {
   const navigate = useNavigate();
+  const selectedAward = propAward || sessionStorage.getItem('ait-award') || '';
   const [rateTable, setRateTable] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [selectedExisting, setSelectedExisting] = useState('');

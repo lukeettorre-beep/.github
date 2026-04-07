@@ -16,24 +16,48 @@ import { Toaster } from './components/ui/sonner';
 import '@/App.css';
 
 function App() {
-  const [selectedAward, setSelectedAward] = useState('');
-  const [employeeData, setEmployeeData] = useState(null);
-  const [calculationResult, setCalculationResult] = useState(null);
-  const [completedSteps, setCompletedSteps] = useState({});
+  const [selectedAward, setSelectedAward] = useState(() => sessionStorage.getItem('ait-award') || '');
+  const [employeeData, setEmployeeData] = useState(() => {
+    const saved = sessionStorage.getItem('ait-employee');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [calculationResult, setCalculationResult] = useState(() => {
+    const saved = sessionStorage.getItem('ait-result');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [completedSteps, setCompletedSteps] = useState(() => {
+    const saved = sessionStorage.getItem('ait-steps');
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const completeStep1 = useCallback((awardCode) => {
     setSelectedAward(awardCode);
-    setCompletedSteps(prev => ({ ...prev, 1: true }));
+    sessionStorage.setItem('ait-award', awardCode);
+    setCompletedSteps(prev => {
+      const next = { ...prev, 1: true };
+      sessionStorage.setItem('ait-steps', JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const completeStep2 = useCallback((empData) => {
     setEmployeeData(empData);
-    setCompletedSteps(prev => ({ ...prev, 2: true }));
+    sessionStorage.setItem('ait-employee', JSON.stringify(empData));
+    setCompletedSteps(prev => {
+      const next = { ...prev, 2: true };
+      sessionStorage.setItem('ait-steps', JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const completeStep3 = useCallback((result) => {
     setCalculationResult(result);
-    setCompletedSteps(prev => ({ ...prev, 3: true, 4: true }));
+    sessionStorage.setItem('ait-result', JSON.stringify(result));
+    setCompletedSteps(prev => {
+      const next = { ...prev, 3: true, 4: true };
+      sessionStorage.setItem('ait-steps', JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   return (
