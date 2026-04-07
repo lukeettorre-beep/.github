@@ -1,53 +1,69 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useCallback } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './components/ThemeProvider';
+import Layout from './components/Layout';
+import Home from './pages/Home';
+import AwardSelector from './pages/AwardSelector';
+import EmployeeProfile from './pages/EmployeeProfile';
+import ShiftInput from './pages/ShiftInput';
+import Results from './pages/Results';
+import Warnings from './pages/Warnings';
+import Classification from './pages/Classification';
+import AuditTrail from './pages/AuditTrail';
+import Admin from './pages/Admin';
+import Help from './pages/Help';
+import { Toaster } from './components/ui/sonner';
+import '@/App.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function App() {
+  const [selectedAward, setSelectedAward] = useState('');
+  const [employeeData, setEmployeeData] = useState(null);
+  const [calculationResult, setCalculationResult] = useState(null);
+  const [completedSteps, setCompletedSteps] = useState({});
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+  const completeStep1 = useCallback((awardCode) => {
+    setSelectedAward(awardCode);
+    setCompletedSteps(prev => ({ ...prev, 1: true }));
+  }, []);
 
-  useEffect(() => {
-    helloWorldApi();
+  const completeStep2 = useCallback((empData) => {
+    setEmployeeData(empData);
+    setCompletedSteps(prev => ({ ...prev, 2: true }));
+  }, []);
+
+  const completeStep3 = useCallback((result) => {
+    setCalculationResult(result);
+    setCompletedSteps(prev => ({ ...prev, 3: true, 4: true }));
   }, []);
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
+    <ThemeProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
+          <Route element={<Layout completedSteps={completedSteps} />}>
             <Route index element={<Home />} />
+            <Route path="/award-selector" element={
+              <AwardSelector onComplete={completeStep1} />
+            } />
+            <Route path="/employee-profile" element={
+              <EmployeeProfile selectedAward={selectedAward} onComplete={completeStep2} />
+            } />
+            <Route path="/shift-input" element={
+              <ShiftInput employeeData={employeeData} selectedAward={selectedAward} onComplete={completeStep3} />
+            } />
+            <Route path="/results" element={
+              <Results calculationResult={calculationResult} />
+            } />
+            <Route path="/warnings" element={<Warnings />} />
+            <Route path="/classification" element={<Classification />} />
+            <Route path="/audit-trail" element={<AuditTrail />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/help" element={<Help />} />
           </Route>
         </Routes>
       </BrowserRouter>
-    </div>
+      <Toaster position="top-right" />
+    </ThemeProvider>
   );
 }
 
