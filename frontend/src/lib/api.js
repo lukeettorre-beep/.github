@@ -21,6 +21,10 @@ export const deleteEmployee = (id) => api.delete(`/employees/${id}`).then(r => r
 // Calculate
 export const calculateShift = (data) => api.post('/calculate', data).then(r => r.data);
 
+// Batch
+export const batchCalculate = (shifts) => api.post('/batch-calculate', { shifts }).then(r => r.data);
+export const batchTemplateCSV = () => `${API}/batch-template/csv`;
+
 // Audit Trail
 export const getAuditTrail = () => api.get('/audit-trail').then(r => r.data);
 export const exportAuditCSV = () => `${API}/audit-trail/csv`;

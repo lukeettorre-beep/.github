@@ -969,6 +969,168 @@ async def clear_audit_trail():
     return {"status": "cleared"}
 
 
+# ─── Batch Calculation ───
+
+class BatchShiftItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    employee_id: str = ""
+    award_code: str = ""
+    employment_type: str = "full_time"
+    classification: str = ""
+    pay_rate: float = 0.0
+    date: str = ""
+    day_of_week: str = ""
+    is_public_holiday: str = "no"
+    start_time: str = "08:00"
+    finish_time: str = "16:00"
+    unpaid_break_mins: int = 0
+    meal_break_at: int = 0
+    hours_this_week: float = 0.0
+    first_aid: bool = False
+    dangerous_goods: bool = False
+    ot_meal: bool = False
+    early_morning: bool = False
+    own_vehicle: bool = False
+    km_driven: float = 0.0
+    loading_unloading: str = "no"
+    loading_hours: float = 0.0
+    delay_breakdown: bool = False
+    delay_hours: float = 0.0
+    shiftwork: str = "none"
+    payment_method: str = "hourly"
+    is_junior: bool = False
+    age: int = 21
+    pt_non_agreed_day: bool = False
+    fatigue_plan: bool = False
+    notes: str = ""
+
+class BatchRequest(BaseModel):
+    shifts: List[BatchShiftItem]
+
+@api_router.post("/batch-calculate")
+async def batch_calculate(batch: BatchRequest):
+    results = []
+    total_pay = 0
+    total_hours = 0
+    total_ot = 0
+    errors = []
+
+    for idx, shift_item in enumerate(batch.shifts):
+        shift_dict = shift_item.model_dump()
+        award_code = shift_dict.get("award_code", "")
+
+        # Look up rate if pay_rate is 0
+        if shift_dict.get("pay_rate", 0) == 0 and shift_dict.get("classification"):
+            rates_doc = await db.rate_tables.find_one({"award_code": award_code}, {"_id": 0})
+            if rates_doc:
+                for cls in rates_doc.get("classifications", []):
+                    if cls["code"] == shift_dict["classification"]:
+                        shift_dict["pay_rate"] = cls["hourly_rate"]
+                        break
+
+        if not shift_dict.get("pay_rate"):
+            errors.append({"row": idx + 1, "error": f"No pay rate found for {shift_dict.get('classification', 'unknown')} under {award_code}"})
+            continue
+
+        try:
+            rates_doc = await db.rate_tables.find_one({"award_code": award_code}, {"_id": 0})
+            if not rates_doc:
+                rates_doc = DEFAULT_RATES.get(award_code)
+            if not rates_doc:
+                errors.append({"row": idx + 1, "error": f"Unknown award: {award_code}"})
+                continue
+
+            if award_code == "MA000002":
+                result = await calculate_clerks(shift_dict, rates_doc)
+            elif award_code == "MA000038":
+                result = await calculate_rtd(shift_dict, rates_doc)
+            elif award_code == "MA000039":
+                result = await calculate_rtldo(shift_dict, rates_doc)
+            else:
+                errors.append({"row": idx + 1, "error": f"Unsupported award: {award_code}"})
+                continue
+
+            result["row"] = idx + 1
+            result["employee_id"] = shift_dict.get("employee_id", "")
+            result["date"] = shift_dict.get("date", "")
+            result["award_code"] = award_code
+            results.append(result)
+
+            total_pay += result["estimated_pay"]
+            total_hours += result["total_hours"]
+            total_ot += result["ot_hours"]
+
+            await log_audit(
+                shift_dict.get("employee_id", "BATCH"),
+                award_code,
+                shift_dict.get("date", ""),
+                "BATCH_CALC",
+                result["estimated_pay"],
+                result["components"],
+                result["plain_english"]
+            )
+        except Exception as e:
+            logger.error(f"Batch row {idx+1} error: {e}")
+            errors.append({"row": idx + 1, "error": str(e)})
+
+    return {
+        "results": results,
+        "errors": errors,
+        "summary": {
+            "total_shifts": len(batch.shifts),
+            "successful": len(results),
+            "failed": len(errors),
+            "total_pay": round(total_pay, 2),
+            "total_hours": round(total_hours, 2),
+            "total_ot_hours": round(total_ot, 2),
+        }
+    }
+
+@api_router.get("/batch-template/csv")
+async def batch_template_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "employee_id", "award_code", "employment_type", "classification",
+        "pay_rate", "date", "day_of_week", "is_public_holiday",
+        "start_time", "finish_time", "unpaid_break_mins",
+        "hours_this_week", "first_aid", "dangerous_goods",
+        "ot_meal", "early_morning", "shiftwork", "payment_method",
+        "km_driven", "loading_unloading", "loading_hours", "notes"
+    ])
+    # Example rows
+    writer.writerow([
+        "EMP-001", "MA000002", "full_time", "L1Y1",
+        "25.74", "2025-07-14", "Monday", "no",
+        "08:00", "16:30", "30",
+        "0", "false", "false",
+        "false", "false", "none", "hourly",
+        "0", "no", "0", "Regular weekday shift"
+    ])
+    writer.writerow([
+        "EMP-002", "MA000038", "casual", "G3",
+        "26.32", "2025-07-15", "Tuesday", "no",
+        "05:00", "15:00", "30",
+        "0", "false", "true",
+        "false", "true", "none", "hourly",
+        "0", "no", "0", "Early morning casual shift"
+    ])
+    writer.writerow([
+        "EMP-003", "MA000039", "full_time", "G5",
+        "40.52", "2025-07-16", "Wednesday", "no",
+        "06:00", "18:00", "60",
+        "0", "false", "false",
+        "false", "false", "none", "cpk",
+        "650", "yes", "2.5", "Long haul Sydney-Melbourne"
+    ])
+    csv_content = output.getvalue()
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=batch_shift_template.csv"}
+    )
+
+
 # ─── Health Check ───
 
 @api_router.get("/health")

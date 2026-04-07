@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Scales, UserCircle, Clock, ChartBar,
   Warning, ListChecks, ClockCounterClockwise,
-  GearSix, Question, House, CheckCircle
+  GearSix, Question, House, CheckCircle, UploadSimple
 } from '@phosphor-icons/react';
 
 const WORKFLOW_STEPS = [
@@ -14,6 +14,7 @@ const WORKFLOW_STEPS = [
 ];
 
 const TOOLS = [
+  { path: '/batch-import', label: 'Batch Import', icon: UploadSimple },
   { path: '/warnings', label: 'Warnings', icon: Warning },
   { path: '/classification', label: 'Classification', icon: ListChecks },
   { path: '/audit-trail', label: 'Audit Trail', icon: ClockCounterClockwise },

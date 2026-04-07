@@ -4,7 +4,7 @@ import { useTheme } from './ThemeProvider';
 import {
   House, Scales, UserCircle, Clock, ChartBar,
   Warning, ListChecks, ClockCounterClockwise,
-  GearSix, Question, Moon, Sun, List
+  GearSix, Question, Moon, Sun, List, UploadSimple
 } from '@phosphor-icons/react';
 import { Button } from '../components/ui/button';
 
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { path: '/employee-profile', label: 'Employee', icon: UserCircle },
   { path: '/shift-input', label: 'Shift', icon: Clock },
   { path: '/results', label: 'Results', icon: ChartBar },
+  { path: '/batch-import', label: 'Batch', icon: UploadSimple },
   { path: '/warnings', label: 'Warnings', icon: Warning },
   { path: '/classification', label: 'Classification', icon: ListChecks },
   { path: '/audit-trail', label: 'Audit', icon: ClockCounterClockwise },

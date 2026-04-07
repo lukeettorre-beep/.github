@@ -310,6 +310,232 @@ class AwardInterpreterTester:
             return success, data
         return False, {}
 
+    def test_batch_template_csv(self):
+        """Test batch CSV template download"""
+        success, data = self.run_test("Batch CSV Template", "GET", "batch-template/csv", 200)
+        if success:
+            print(f"   CSV template downloaded successfully")
+            # Check if it's CSV content
+            if isinstance(data, str) and 'employee_id' in data:
+                lines = data.strip().split('\n')
+                print(f"   Template has {len(lines)} lines (header + examples)")
+        return success, data
+
+    def test_batch_calculate_single_award(self):
+        """Test batch calculation with single award"""
+        batch_shifts = [
+            {
+                "employee_id": "BATCH-001",
+                "award_code": "MA000002",
+                "employment_type": "full_time",
+                "classification": "L1Y1",
+                "pay_rate": 25.74,
+                "date": "2024-01-15",
+                "day_of_week": "Monday",
+                "is_public_holiday": "no",
+                "start_time": "09:00",
+                "finish_time": "17:00",
+                "unpaid_break_mins": 30,
+                "hours_this_week": 0,
+                "first_aid": True,
+                "dangerous_goods": False,
+                "ot_meal": False,
+                "early_morning": False,
+                "shiftwork": "none",
+                "payment_method": "hourly",
+                "km_driven": 0,
+                "loading_unloading": "no",
+                "loading_hours": 0,
+                "notes": "Batch test shift 1"
+            },
+            {
+                "employee_id": "BATCH-002",
+                "award_code": "MA000002",
+                "employment_type": "casual",
+                "classification": "L2",
+                "pay_rate": 28.42,
+                "date": "2024-01-16",
+                "day_of_week": "Tuesday",
+                "is_public_holiday": "no",
+                "start_time": "10:00",
+                "finish_time": "18:00",
+                "unpaid_break_mins": 30,
+                "hours_this_week": 0,
+                "first_aid": False,
+                "dangerous_goods": False,
+                "ot_meal": False,
+                "early_morning": False,
+                "shiftwork": "none",
+                "payment_method": "hourly",
+                "km_driven": 0,
+                "loading_unloading": "no",
+                "loading_hours": 0,
+                "notes": "Batch test shift 2"
+            }
+        ]
+        
+        success, data = self.run_test("Batch Calculate Single Award", "POST", "batch-calculate", 200, {"shifts": batch_shifts})
+        if success and isinstance(data, dict):
+            summary = data.get('summary', {})
+            print(f"   Total Shifts: {summary.get('total_shifts', 'N/A')}")
+            print(f"   Successful: {summary.get('successful', 'N/A')}")
+            print(f"   Failed: {summary.get('failed', 'N/A')}")
+            print(f"   Total Pay: ${summary.get('total_pay', 'N/A')}")
+            print(f"   Total Hours: {summary.get('total_hours', 'N/A')}")
+            print(f"   Total OT Hours: {summary.get('total_ot_hours', 'N/A')}")
+            
+            results = data.get('results', [])
+            errors = data.get('errors', [])
+            print(f"   Results: {len(results)} items")
+            print(f"   Errors: {len(errors)} items")
+        return success, data
+
+    def test_batch_calculate_multiple_awards(self):
+        """Test batch calculation with multiple awards"""
+        batch_shifts = [
+            {
+                "employee_id": "MULTI-001",
+                "award_code": "MA000002",
+                "employment_type": "full_time",
+                "classification": "L1Y1",
+                "pay_rate": 25.74,
+                "date": "2024-01-15",
+                "day_of_week": "Monday",
+                "is_public_holiday": "no",
+                "start_time": "09:00",
+                "finish_time": "17:00",
+                "unpaid_break_mins": 30,
+                "hours_this_week": 0,
+                "shiftwork": "none",
+                "payment_method": "hourly",
+                "notes": "Clerks award test"
+            },
+            {
+                "employee_id": "MULTI-002",
+                "award_code": "MA000038",
+                "employment_type": "full_time",
+                "classification": "G3",
+                "pay_rate": 26.32,
+                "date": "2024-01-16",
+                "day_of_week": "Tuesday",
+                "is_public_holiday": "no",
+                "start_time": "06:00",
+                "finish_time": "14:00",
+                "unpaid_break_mins": 30,
+                "hours_this_week": 0,
+                "early_morning": True,
+                "dangerous_goods": True,
+                "km_driven": 150,
+                "shiftwork": "none",
+                "payment_method": "hourly",
+                "notes": "RTD award test"
+            },
+            {
+                "employee_id": "MULTI-003",
+                "award_code": "MA000039",
+                "employment_type": "full_time",
+                "classification": "G5",
+                "pay_rate": 40.52,
+                "date": "2024-01-17",
+                "day_of_week": "Wednesday",
+                "is_public_holiday": "no",
+                "start_time": "05:00",
+                "finish_time": "15:00",
+                "unpaid_break_mins": 60,
+                "hours_this_week": 0,
+                "km_driven": 650,
+                "loading_unloading": "yes",
+                "loading_hours": 2.5,
+                "shiftwork": "none",
+                "payment_method": "cpk",
+                "notes": "RTLDO award test"
+            }
+        ]
+        
+        success, data = self.run_test("Batch Calculate Multiple Awards", "POST", "batch-calculate", 200, {"shifts": batch_shifts})
+        if success and isinstance(data, dict):
+            summary = data.get('summary', {})
+            print(f"   Total Shifts: {summary.get('total_shifts', 'N/A')}")
+            print(f"   Successful: {summary.get('successful', 'N/A')}")
+            print(f"   Failed: {summary.get('failed', 'N/A')}")
+            print(f"   Total Pay: ${summary.get('total_pay', 'N/A')}")
+            print(f"   Total Hours: {summary.get('total_hours', 'N/A')}")
+            print(f"   Total OT Hours: {summary.get('total_ot_hours', 'N/A')}")
+        return success, data
+
+    def test_batch_calculate_auto_lookup_rate(self):
+        """Test batch calculation with auto pay rate lookup"""
+        batch_shifts = [
+            {
+                "employee_id": "AUTO-001",
+                "award_code": "MA000002",
+                "employment_type": "full_time",
+                "classification": "L3",
+                "pay_rate": 0,  # Should auto-lookup from classification
+                "date": "2024-01-15",
+                "day_of_week": "Monday",
+                "is_public_holiday": "no",
+                "start_time": "09:00",
+                "finish_time": "17:00",
+                "unpaid_break_mins": 30,
+                "hours_this_week": 0,
+                "shiftwork": "none",
+                "payment_method": "hourly",
+                "notes": "Auto rate lookup test"
+            }
+        ]
+        
+        success, data = self.run_test("Batch Calculate Auto Rate Lookup", "POST", "batch-calculate", 200, {"shifts": batch_shifts})
+        if success and isinstance(data, dict):
+            summary = data.get('summary', {})
+            results = data.get('results', [])
+            if results and len(results) > 0:
+                print(f"   Auto-looked up rate worked: Pay = ${results[0].get('estimated_pay', 'N/A')}")
+            print(f"   Successful: {summary.get('successful', 'N/A')}")
+            print(f"   Failed: {summary.get('failed', 'N/A')}")
+        return success, data
+
+    def test_batch_calculate_with_errors(self):
+        """Test batch calculation with invalid data to check error handling"""
+        batch_shifts = [
+            {
+                "employee_id": "ERROR-001",
+                "award_code": "INVALID_AWARD",  # Invalid award code
+                "employment_type": "full_time",
+                "classification": "L1Y1",
+                "pay_rate": 25.74,
+                "date": "2024-01-15",
+                "day_of_week": "Monday",
+                "start_time": "09:00",
+                "finish_time": "17:00",
+                "notes": "Error test - invalid award"
+            },
+            {
+                "employee_id": "ERROR-002",
+                "award_code": "MA000002",
+                "employment_type": "full_time",
+                "classification": "INVALID_CLASS",  # Invalid classification
+                "pay_rate": 0,  # No rate and invalid classification
+                "date": "2024-01-16",
+                "day_of_week": "Tuesday",
+                "start_time": "09:00",
+                "finish_time": "17:00",
+                "notes": "Error test - invalid classification"
+            }
+        ]
+        
+        success, data = self.run_test("Batch Calculate Error Handling", "POST", "batch-calculate", 200, {"shifts": batch_shifts})
+        if success and isinstance(data, dict):
+            summary = data.get('summary', {})
+            errors = data.get('errors', [])
+            print(f"   Total Shifts: {summary.get('total_shifts', 'N/A')}")
+            print(f"   Successful: {summary.get('successful', 'N/A')}")
+            print(f"   Failed: {summary.get('failed', 'N/A')}")
+            print(f"   Errors with row numbers: {len(errors)} items")
+            for error in errors:
+                print(f"     Row {error.get('row', 'N/A')}: {error.get('error', 'N/A')}")
+        return success, data
+
 def main():
     print("🚀 Starting Award Interpreter Tool Backend API Tests")
     print("=" * 60)
@@ -332,6 +558,12 @@ def main():
         tester.test_get_audit_trail,
         tester.test_audit_csv_export,
         tester.test_update_rate_table,
+        # New batch import tests
+        tester.test_batch_template_csv,
+        tester.test_batch_calculate_single_award,
+        tester.test_batch_calculate_multiple_awards,
+        tester.test_batch_calculate_auto_lookup_rate,
+        tester.test_batch_calculate_with_errors,
     ]
     
     print(f"\n📋 Running {len(tests)} test scenarios...")

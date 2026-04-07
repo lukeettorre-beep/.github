@@ -12,6 +12,7 @@ import Classification from './pages/Classification';
 import AuditTrail from './pages/AuditTrail';
 import Admin from './pages/Admin';
 import Help from './pages/Help';
+import BatchImport from './pages/BatchImport';
 import { Toaster } from './components/ui/sonner';
 import '@/App.css';
 
@@ -83,6 +84,7 @@ function App() {
             <Route path="/audit-trail" element={<AuditTrail />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/batch-import" element={<BatchImport />} />
           </Route>
         </Routes>
       </BrowserRouter>
